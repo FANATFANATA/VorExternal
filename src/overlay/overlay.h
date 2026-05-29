@@ -1,5 +1,4 @@
 #pragma once
-
 #include <windows.h>
 #include <d3d11.h>
 #include <wrl/client.h>
@@ -17,7 +16,6 @@ class Overlay
 public:
     Overlay() noexcept = default;
     ~Overlay() noexcept;
-
     Overlay(const Overlay &) = delete;
     Overlay &operator=(const Overlay &) = delete;
     Overlay(Overlay &&) noexcept = default;
@@ -31,12 +29,9 @@ public:
 
     void toggle_click_through(bool click_through) noexcept;
 
-    [[nodiscard]] HWND get_window_handle() const noexcept;
-
 private:
     HWND window_handle_{nullptr};
     WNDCLASSEXW window_class_{};
-
     Microsoft::WRL::ComPtr<ID3D11Device> device_;
     Microsoft::WRL::ComPtr<ID3D11DeviceContext> device_context_;
     Microsoft::WRL::ComPtr<IDXGISwapChain> swap_chain_;

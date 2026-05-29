@@ -6,11 +6,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(VorExternal
     src/main.cpp
-    src/memory.h
-    src/memory.cpp
-    src/offsets.h
-    src/overlay.h
-    src/overlay.cpp
+    src/config/config.cpp
+    src/memory/memory.cpp
+    src/overlay/overlay.cpp
+    src/cheat/cheat.cpp
+    src/render/render.cpp
     src/imgui/imgui.cpp
     src/imgui/imgui_draw.cpp
     src/imgui/imgui_tables.cpp
