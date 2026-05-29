@@ -8,31 +8,33 @@
 
 struct Vector3
 {
-    float x, y, z;
+    float x = 0.0f;
+    float y = 0.0f;
+    float z = 0.0f;
 };
 
 struct ViewMatrix
 {
-    float matrix[4][4];
+    float matrix[4][4]{};
 };
 
 struct PlayerData
 {
     std::string name;
-    int health;
-    std::uint8_t team;
+    int health = 0;
+    std::uint8_t team = 0;
     Vector3 position;
     Vector3 feet_screen;
     Vector3 head_screen;
-    bool is_alive;
-    bool is_on_screen;
+    bool is_alive = false;
+    bool is_on_screen = false;
 };
 
 #pragma pack(push, 1)
 struct Config
 {
     std::uint32_t magic = 0x564F5201;
-    std::uint32_t version = 2;
+    std::uint32_t version = 3;
     bool esp_enabled = true;
     bool esp_teammates = false;
     bool esp_outline = true;
@@ -49,6 +51,7 @@ struct Config
     float color_t[4] = {1.0f, 0.0f, 0.0f, 1.0f};
     float color_ct[4] = {0.0f, 0.5f, 1.0f, 1.0f};
     float color_txt[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    int language = 0;
 };
 #pragma pack(pop)
 

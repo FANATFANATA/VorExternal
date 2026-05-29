@@ -1,4 +1,5 @@
 #pragma once
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include "../types.h"
 #include "imgui.h"
 #include <string>
