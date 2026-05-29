@@ -102,23 +102,28 @@ namespace ui
         ImVec2 pos = ImGui::GetCursorScreenPos();
         float size = consts::UI_CHECK_SIZE;
         float label_w = ImGui::CalcTextSize(label).x;
+
         if (ImGui::InvisibleButton("##cb", ImVec2(size + consts::UI_SPACE_SMALL + label_w, size)))
         {
             *v = !(*v);
             changed = true;
         }
+
         bool hovered = ImGui::IsItemHovered();
         ImDrawList *dl = ImGui::GetWindowDrawList();
         ImVec2 c_min = pos;
         ImVec2 c_max = ImVec2(pos.x + size, pos.y + size);
         float rounding = consts::UI_ROUNDING;
         float inner_rounding = rounding - 1.0f;
+
         dl->AddRectFilled(c_min, c_max, consts::UI_COL_FRAME, rounding);
         dl->AddRect(c_min, c_max, hovered ? consts::UI_COL_ACCENT : consts::UI_COL_BORDER, rounding);
+
         if (*v)
         {
             dl->AddRectFilled(ImVec2(c_min.x + 3.0f, c_min.y + 3.0f), ImVec2(c_max.x - 3.0f, c_max.y - 3.0f), consts::UI_COL_ACCENT, inner_rounding);
         }
+
         dl->AddText(ImVec2(c_max.x + consts::UI_SPACE_SMALL, pos.y), consts::UI_COL_TEXT, label);
         ImGui::PopID();
         return changed;
@@ -131,11 +136,14 @@ namespace ui
         ImVec2 pos = ImGui::GetCursorScreenPos();
         float width = consts::UI_SLIDER_WIDTH;
         float height = consts::UI_SLIDER_HEIGHT;
+
         if (ImGui::InvisibleButton("##sl", ImVec2(width, height)))
         {
         }
+
         bool active = ImGui::IsItemActive();
         bool hovered = ImGui::IsItemHovered();
+
         if (hovered && ImGui::IsMouseClicked(0))
         {
             float click_x = ImGui::GetIO().MousePos.x - pos.x;
@@ -143,6 +151,7 @@ namespace ui
             *v = min + ratio * (max - min);
             changed = true;
         }
+
         if (active && ImGui::IsMouseDragging(0))
         {
             float click_x = ImGui::GetIO().MousePos.x - pos.x;
@@ -150,20 +159,25 @@ namespace ui
             *v = min + ratio * (max - min);
             changed = true;
         }
+
         if (*v < min)
             *v = min;
         if (*v > max)
             *v = max;
+
         ImDrawList *dl = ImGui::GetWindowDrawList();
         float ratio = (*v - min) / (max - min);
         float rounding = consts::UI_ROUNDING;
+
         dl->AddRectFilled(pos, ImVec2(pos.x + width, pos.y + height), consts::UI_COL_FRAME, rounding);
         dl->AddRectFilled(pos, ImVec2(pos.x + width * ratio, pos.y + height), consts::UI_COL_ACCENT, rounding);
         dl->AddRect(pos, ImVec2(pos.x + width, pos.y + height), (hovered || active) ? consts::UI_COL_ACCENT : consts::UI_COL_BORDER, rounding);
+
         char buf[32];
         std::snprintf(buf, sizeof(buf), "%.1f", *v);
         ImVec2 val_sz = ImGui::CalcTextSize(buf);
         dl->AddText(ImVec2(pos.x + width - val_sz.x - consts::UI_PAD_SMALL, pos.y + (height - val_sz.y) / 2.0f), consts::UI_COL_TEXT, buf);
+
         ImGui::PopID();
         return changed;
     }
@@ -175,17 +189,22 @@ namespace ui
         ImVec2 pos = ImGui::GetCursorScreenPos();
         float width = consts::UI_SLIDER_WIDTH;
         float height = consts::UI_BUTTON_HEIGHT;
+
         if (ImGui::InvisibleButton("##combo", ImVec2(width, height)))
         {
             ImGui::OpenPopup(id);
         }
+
         bool hovered = ImGui::IsItemHovered();
         ImDrawList *dl = ImGui::GetWindowDrawList();
         float rounding = consts::UI_ROUNDING;
+
         dl->AddRectFilled(pos, ImVec2(pos.x + width, pos.y + height), consts::UI_COL_FRAME, rounding);
         dl->AddRect(pos, ImVec2(pos.x + width, pos.y + height), hovered ? consts::UI_COL_ACCENT : consts::UI_COL_BORDER, rounding);
+
         ImVec2 txt_sz = ImGui::CalcTextSize(items[*current]);
         dl->AddText(ImVec2(pos.x + consts::UI_PAD_SMALL, pos.y + (height - txt_sz.y) / 2.0f), consts::UI_COL_TEXT, items[*current]);
+
         if (ImGui::BeginPopup(id))
         {
             for (int i = 0; i < count; i++)
@@ -208,15 +227,20 @@ namespace ui
         ImVec2 size = ImVec2(width, consts::UI_BUTTON_HEIGHT);
         if (width == 0.0f)
             size.x = ImGui::CalcTextSize(label).x + consts::UI_PAD * 2.0f;
+
         if (ImGui::InvisibleButton(label, size))
             return true;
+
         bool hovered = ImGui::IsItemHovered();
         bool active = ImGui::IsItemActive();
+
         ImDrawList *dl = ImGui::GetWindowDrawList();
         float rounding = consts::UI_ROUNDING;
         ImU32 bg = active ? consts::UI_COL_ACCENT : (hovered ? consts::UI_COL_HOVER : consts::UI_COL_FRAME);
+
         dl->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), bg, rounding);
         dl->AddRect(pos, ImVec2(pos.x + size.x, pos.y + size.y), (hovered || active) ? consts::UI_COL_ACCENT : consts::UI_COL_BORDER, rounding);
+
         ImVec2 text_size = ImGui::CalcTextSize(label);
         dl->AddText(ImVec2(pos.x + (size.x - text_size.x) / 2.0f, pos.y + (size.y - text_size.y) / 2.0f), consts::UI_COL_TEXT, label);
         return false;
@@ -226,17 +250,23 @@ namespace ui
     {
         ImVec2 pos = ImGui::GetCursorScreenPos();
         ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x, consts::UI_TAB_HEIGHT);
+
         if (ImGui::InvisibleButton(label, size))
             return true;
+
         bool hovered = ImGui::IsItemHovered();
+
         ImDrawList *dl = ImGui::GetWindowDrawList();
         float rounding = consts::UI_ROUNDING;
         ImU32 bg = active ? consts::UI_COL_ACTIVE : (hovered ? consts::UI_COL_HOVER : consts::UI_COL_FRAME);
+
         dl->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), bg, rounding);
+
         if (active)
         {
             dl->AddRectFilled(pos, ImVec2(pos.x + 3.0f, pos.y + size.y), consts::UI_COL_ACCENT, 0.0f);
         }
+
         ImVec2 text_size = ImGui::CalcTextSize(label);
         dl->AddText(ImVec2(pos.x + consts::UI_PAD, pos.y + (size.y - text_size.y) / 2.0f), active ? consts::UI_COL_TEXT : consts::UI_COL_TEXT_DIM, label);
         return false;
@@ -276,8 +306,10 @@ namespace
             start = ImVec2(static_cast<float>(sw) / consts::BOX_WIDTH_DIVISOR, static_cast<float>(sh) / consts::BOX_WIDTH_DIVISOR);
         else
             start = ImVec2(static_cast<float>(sw) / consts::BOX_WIDTH_DIVISOR, 0.0f);
+
         const ImVec2 end(feet.x, feet.y);
         const ImU32 clr = ImGui::ColorConvertFloat4ToU32(col);
+
         if (cfg.esp_outline)
             dl->AddLine(start, end, consts::COL_BLACK, cfg.snapline_border + consts::SNAPLINE_OUTLINE_ADD);
         dl->AddLine(start, end, clr, cfg.snapline_border);
@@ -298,15 +330,18 @@ namespace
             {
                 const float lw = w / consts::CORNER_DIVISOR;
                 const float lh = h / consts::CORNER_DIVISOR;
+
                 dl->AddLine(ImVec2(l, t), ImVec2(l + lw, t), c, th);
                 dl->AddLine(ImVec2(l, t), ImVec2(l, t + lh), c, th);
                 dl->AddLine(ImVec2(r, t), ImVec2(r - lw, t), c, th);
                 dl->AddLine(ImVec2(r, t), ImVec2(r, t + lh), c, th);
+
                 dl->AddLine(ImVec2(l, b), ImVec2(l + lw, b), c, th);
                 dl->AddLine(ImVec2(l, b), ImVec2(l, b - lh), c, th);
                 dl->AddLine(ImVec2(r, b), ImVec2(r - lw, b), c, th);
                 dl->AddLine(ImVec2(r, b), ImVec2(r, b - lh), c, th);
             };
+
             if (cfg.esp_outline)
                 draw_c(consts::COL_BLACK, cfg.box_border + consts::BOX_OUTLINE_ADD);
             draw_c(clr, cfg.box_border);
@@ -317,7 +352,9 @@ namespace
     {
         const float pct = std::clamp(static_cast<float>(health) / static_cast<float>(consts::HEALTH_DIVISOR), consts::MIN_HEALTH_PERCENT, consts::MAX_HEALTH_PERCENT);
         const ImU32 hclr = IM_COL32(static_cast<int>((consts::MAX_HEALTH_PERCENT - pct) * consts::BYTE_MAX), static_cast<int>(pct * consts::BYTE_MAX), 0, consts::BYTE_MAX);
+
         float bl, bt, br, bb, fl, ft, fr, fb;
+
         if (cfg.hp_bar_pos == 0)
         {
             bl = l - consts::HP_BAR_OFFSET;
@@ -362,8 +399,10 @@ namespace
             fr = l + (w * pct);
             fb = bb;
         }
+
         if (cfg.esp_outline)
             dl->AddRectFilled(ImVec2(bl - consts::BOX_PADDING, bt - consts::BOX_PADDING), ImVec2(br + consts::BOX_PADDING, bb + consts::BOX_PADDING), consts::COL_BLACK);
+
         dl->AddRectFilled(ImVec2(bl, bt), ImVec2(br, bb), IM_COL32(consts::HP_BAR_BG_R, consts::HP_BAR_BG_G, consts::HP_BAR_BG_B, consts::HP_BAR_BG_A));
         dl->AddRectFilled(ImVec2(fl, ft), ImVec2(fr, fb), hclr);
     }
@@ -372,6 +411,7 @@ namespace
     {
         const ImVec2 sz = ImGui::CalcTextSize(name.c_str());
         ImVec2 pos;
+
         if (cfg.name_pos == 0)
             pos = ImVec2(l + w / consts::BOX_WIDTH_DIVISOR - sz.x / consts::BOX_WIDTH_DIVISOR, t - sz.y - consts::TEXT_PADDING);
         else if (cfg.name_pos == 1)
@@ -380,7 +420,9 @@ namespace
             pos = ImVec2(l - sz.x - consts::TEXT_PADDING, t + h / consts::BOX_WIDTH_DIVISOR - sz.y / consts::BOX_WIDTH_DIVISOR);
         else
             pos = ImVec2(r + consts::TEXT_PADDING, t + h / consts::BOX_WIDTH_DIVISOR - sz.y / consts::BOX_WIDTH_DIVISOR);
+
         const ImU32 txt_clr = ImGui::ColorConvertFloat4ToU32(col_txt);
+
         if (cfg.esp_outline)
         {
             dl->AddText(ImVec2(pos.x - consts::BOX_PADDING, pos.y), consts::COL_BLACK, name.c_str());
@@ -388,6 +430,7 @@ namespace
             dl->AddText(ImVec2(pos.x, pos.y - consts::BOX_PADDING), consts::COL_BLACK, name.c_str());
             dl->AddText(ImVec2(pos.x, pos.y + consts::BOX_PADDING), consts::COL_BLACK, name.c_str());
         }
+
         dl->AddText(pos, txt_clr, name.c_str());
     }
 }
@@ -396,6 +439,7 @@ void render::setup_monochrome()
 {
     ImGuiIO &io = ImGui::GetIO();
     io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\segoeui.ttf", consts::UI_FONT_SIZE);
+
     ImGuiStyle &s = ImGui::GetStyle();
     s.WindowRounding = consts::UI_WINDOW_ROUNDING;
     s.ChildRounding = consts::UI_WINDOW_ROUNDING;
@@ -410,6 +454,7 @@ void render::setup_monochrome()
     s.FramePadding = ImVec2(consts::UI_PAD_SMALL, consts::UI_PAD_SMALL);
     s.ItemSpacing = ImVec2(consts::UI_SPACE, consts::UI_SPACE);
     s.ItemInnerSpacing = ImVec2(consts::UI_SPACE_SMALL, consts::UI_SPACE_SMALL);
+
     ImVec4 *c = s.Colors;
     c[ImGuiCol_Text] = ImVec4(0.85f, 0.85f, 0.85f, 1.00f);
     c[ImGuiCol_WindowBg] = ImVec4(0.08f, 0.08f, 0.08f, 1.00f);
@@ -436,22 +481,28 @@ void render::draw_esp(ImDrawList *const dl, const std::vector<PlayerData> &playe
 {
     if (!cfg.esp_enabled || players.empty())
         return;
+
     const ImVec4 col_t(cfg.color_t[0], cfg.color_t[1], cfg.color_t[2], cfg.color_t[3]);
     const ImVec4 col_ct(cfg.color_ct[0], cfg.color_ct[1], cfg.color_ct[2], cfg.color_ct[3]);
     const ImVec4 col_txt(cfg.color_txt[0], cfg.color_txt[1], cfg.color_txt[2], cfg.color_txt[3]);
+
     for (const auto &p : players)
     {
         if (!p.is_on_screen)
             continue;
+
         const float h = p.feet_screen.y - p.head_screen.y;
         if (h <= 0.0f)
             continue;
+
         const float w = h / consts::BOX_WIDTH_DIVISOR;
         const float l = p.head_screen.x - w / consts::BOX_WIDTH_DIVISOR;
         const float t = p.head_screen.y;
         const float r = l + w;
         const float b = p.feet_screen.y;
+
         const ImVec4 &team_col = (p.team == consts::TEAM_TERRORIST) ? col_t : col_ct;
+
         if (cfg.show_snaplines)
             draw_snapline(dl, team_col, p.feet_screen, cfg, sw, sh);
         if (cfg.show_boxes)
@@ -466,19 +517,23 @@ void render::draw_esp(ImDrawList *const dl, const std::vector<PlayerData> &playe
 void render::draw_menu(Config &cfg, bool &menu, char *cfg_input, std::string &cfg_name)
 {
     static int active_tab = 0;
+
     ImGui::SetNextWindowSize(ImVec2(consts::UI_WINDOW_W, consts::UI_WINDOW_H), ImGuiCond_Always);
     ImGui::Begin("##VorExternalMain", &menu, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
     ImGui::SetCursorPosX(consts::UI_PAD);
     ImGui::SetCursorPosY(consts::UI_PAD_SMALL);
-    ui::text("VOR EXTERNAL");
+    ui::text("VOR");
     ImGui::Separator();
     ImGui::Spacing();
+
     if (ImGui::BeginTable("##MainLayout", 2, ImGuiTableFlags_SizingFixedFit))
     {
         ImGui::TableSetupColumn("##Sidebar", ImGuiTableColumnFlags_WidthFixed, consts::UI_SIDEBAR_WIDTH);
         ImGui::TableSetupColumn("##Content", ImGuiTableColumnFlags_WidthFixed, consts::UI_CONTENT_WIDTH);
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
+
         ImGui::BeginChild("##SidebarChild", ImVec2(0, 0), true);
         if (ui::tab(tr::visuals(cfg.language), active_tab == 0))
             active_tab = 0;
@@ -487,18 +542,22 @@ void render::draw_menu(Config &cfg, bool &menu, char *cfg_input, std::string &cf
         if (ui::tab(tr::configs(cfg.language), active_tab == 2))
             active_tab = 2;
         ImGui::EndChild();
+
         ImGui::TableNextColumn();
         ImGui::BeginChild("##ContentChild", ImVec2(0, 0), true);
+
         if (active_tab == 0)
         {
             if (ui::checkbox(tr::enable(cfg.language), &cfg.esp_enabled))
             {
             }
+
             if (cfg.esp_enabled)
             {
                 ImGui::Indent();
                 ui::checkbox(tr::teammates(cfg.language), &cfg.esp_teammates);
                 ui::checkbox(tr::outline(cfg.language), &cfg.esp_outline);
+
                 ui::checkbox(tr::boxes(cfg.language), &cfg.show_boxes);
                 if (cfg.show_boxes)
                 {
@@ -508,6 +567,7 @@ void render::draw_menu(Config &cfg, bool &menu, char *cfg_input, std::string &cf
                     ui::slider_float("##BoxThick", &cfg.box_border, consts::SLIDER_MIN, consts::SLIDER_MAX);
                     ImGui::Unindent();
                 }
+
                 ui::checkbox(tr::hp_bar(cfg.language), &cfg.show_health);
                 if (cfg.show_health)
                 {
@@ -516,6 +576,7 @@ void render::draw_menu(Config &cfg, bool &menu, char *cfg_input, std::string &cf
                     ui::combo("##HpPos", &cfg.hp_bar_pos, hp, 4);
                     ImGui::Unindent();
                 }
+
                 ui::checkbox(tr::names(cfg.language), &cfg.show_names);
                 if (cfg.show_names)
                 {
@@ -524,6 +585,7 @@ void render::draw_menu(Config &cfg, bool &menu, char *cfg_input, std::string &cf
                     ui::combo("##NamePos", &cfg.name_pos, np, 4);
                     ImGui::Unindent();
                 }
+
                 ui::checkbox(tr::snaplines(cfg.language), &cfg.show_snaplines);
                 if (cfg.show_snaplines)
                 {
@@ -549,6 +611,7 @@ void render::draw_menu(Config &cfg, bool &menu, char *cfg_input, std::string &cf
             ui::input_text("##CfgName", cfg_input, consts::MAX_CONFIG_NAME_LENGTH);
             cfg_name = cfg_input;
             float btn_w = (ImGui::GetContentRegionAvail().x - consts::UI_SPACE * 2.0f) / 3.0f;
+
             if (ui::button(tr::save(cfg.language), btn_w))
                 config_manager::save(cfg_name, cfg);
             ImGui::SameLine();
@@ -557,6 +620,7 @@ void render::draw_menu(Config &cfg, bool &menu, char *cfg_input, std::string &cf
             ImGui::SameLine();
             if (ui::button(tr::del(cfg.language), btn_w))
                 config_manager::remove(cfg_name);
+
             ImGui::Separator();
             ui::text(tr::saved_configs(cfg.language));
             ImGui::BeginChild("##ConfigList", ImVec2(0, 100.0f), true);
