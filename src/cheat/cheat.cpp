@@ -55,6 +55,14 @@ void cheat::worker(const Memory &m, std::uintptr_t c_base, SharedState &s)
         std::uintptr_t lp = *lp_opt;
         ViewMatrix vm = *vm_opt;
 
+        std::uint8_t local_team = 0;
+        if (lp)
+        {
+            auto lt_opt = m.read<std::uint8_t>(lp + game::fields::m_iTeamNum);
+            if (lt_opt)
+                local_team = *lt_opt;
+        }
+
         tmp.clear();
         for (int i = 1; i <= consts::MAX_PLAYERS; ++i)
         {
@@ -101,6 +109,7 @@ void cheat::worker(const Memory &m, std::uintptr_t c_base, SharedState &s)
             int w_idx = s.write_index.load();
             s.players_buffer[w_idx] = std::move(tmp);
             s.vm_buffer[w_idx] = vm;
+            s.local_team_buffer[w_idx] = local_team;
             s.read_index.store(w_idx);
             s.write_index.store(w_idx == 0 ? 1 : 0);
         }

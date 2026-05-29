@@ -68,6 +68,114 @@ namespace consts
     constexpr int HP_BAR_BG_A = 200;
 }
 
+namespace
+{
+    void draw_snapline(ImDrawList *const dl, const ImVec4 &col, const Vector3 &feet, const Config &cfg, int sw, int sh)
+    {
+        ImVec2 start;
+        if (cfg.snapline_type == 0)
+            start = {sw / 2.0f, static_cast<float>(sh)};
+        else if (cfg.snapline_type == 1)
+            start = {sw / 2.0f, sh / 2.0f};
+        else
+            start = {sw / 2.0f, 0.0f};
+
+        const ImVec2 end(feet.x, feet.y);
+        const ImU32 clr = ImGui::ColorConvertFloat4ToU32(col);
+
+        if (cfg.esp_outline)
+            dl->AddLine(start, end, 0xFF000000, cfg.snapline_border + consts::SNAPLINE_OUTLINE_ADD);
+        dl->AddLine(start, end, clr, cfg.snapline_border);
+    }
+
+    void draw_box(ImDrawList *const dl, const ImVec4 &col, float l, float t, float r, float b, float w, float h, const Config &cfg)
+    {
+        const ImU32 clr = ImGui::ColorConvertFloat4ToU32(col);
+        if (cfg.box_type == 0)
+        {
+            if (cfg.esp_outline)
+                dl->AddRect({l - consts::BOX_PADDING, t - consts::BOX_PADDING}, {r + consts::BOX_PADDING, b + consts::BOX_PADDING}, 0xFF000000);
+            dl->AddRect({l, t}, {r, b}, clr, 0.0f, 0, cfg.box_border);
+        }
+        else
+        {
+            auto draw_c = [&](ImU32 c, float th)
+            {
+                const float lw = w / consts::CORNER_DIVISOR;
+                const float lh = h / consts::CORNER_DIVISOR;
+                dl->AddLine({l, t}, {l + lw, t}, c, th);
+                dl->AddLine({l, t}, {l, t + lh}, c, th);
+                dl->AddLine({r, t}, {r - lw, t}, c, th);
+                dl->AddLine({r, t}, {r, t + lh}, c, th);
+                dl->AddLine({l, b}, {l + lw, b}, c, th);
+                dl->AddLine({l, b}, {l, b - lh}, c, th);
+                dl->AddLine({r, b}, {r - lw, b}, c, th);
+                dl->AddLine({r, b}, {r, b - lh}, c, th);
+            };
+            if (cfg.esp_outline)
+                draw_c(0xFF000000, cfg.box_border + consts::BOX_OUTLINE_ADD);
+            draw_c(clr, cfg.box_border);
+        }
+    }
+
+    void draw_health(ImDrawList *const dl, int health, float l, float t, float r, float b, float w, float h, const Config &cfg)
+    {
+        const float pct = std::clamp(static_cast<float>(health) / consts::HEALTH_DIVISOR, consts::MIN_HEALTH_PERCENT, consts::MAX_HEALTH_PERCENT);
+        const ImU32 hclr = IM_COL32(static_cast<int>((consts::MAX_HEALTH_PERCENT - pct) * consts::BYTE_MAX), static_cast<int>(pct * consts::BYTE_MAX), 0, consts::BYTE_MAX);
+
+        float bl, bt, br, bb, fl, ft, fr, fb;
+        if (cfg.hp_bar_pos == 0)
+        {
+            bl = l - consts::HP_BAR_OFFSET; bt = t; br = l - consts::HP_BAR_WIDTH; bb = b;
+            fl = bl; ft = b - (h * pct); fr = br; fb = b;
+        }
+        else if (cfg.hp_bar_pos == 1)
+        {
+            bl = r + consts::HP_BAR_WIDTH; bt = t; br = r + consts::HP_BAR_OFFSET; bb = b;
+            fl = bl; ft = b - (h * pct); fr = br; fb = b;
+        }
+        else if (cfg.hp_bar_pos == 2)
+        {
+            bl = l; bt = t - consts::HP_BAR_OFFSET; br = r; bb = t - consts::HP_BAR_WIDTH;
+            fl = l; ft = bt; fr = l + (w * pct); fb = bb;
+        }
+        else
+        {
+            bl = l; bt = b + consts::HP_BAR_WIDTH; br = r; bb = b + consts::HP_BAR_OFFSET;
+            fl = l; ft = bt; fr = l + (w * pct); fb = bb;
+        }
+
+        if (cfg.esp_outline)
+            dl->AddRectFilled({bl - consts::BOX_PADDING, bt - consts::BOX_PADDING}, {br + consts::BOX_PADDING, bb + consts::BOX_PADDING}, 0xFF000000);
+        dl->AddRectFilled({bl, bt}, {br, bb}, IM_COL32(consts::HP_BAR_BG_R, consts::HP_BAR_BG_G, consts::HP_BAR_BG_B, consts::HP_BAR_BG_A));
+        dl->AddRectFilled({fl, ft}, {fr, fb}, hclr);
+    }
+
+    void draw_name(ImDrawList *const dl, const std::string &name, const ImVec4 &col_txt, float l, float t, float r, float b, float w, float h, const Config &cfg)
+    {
+        const ImVec2 sz = ImGui::CalcTextSize(name.c_str());
+        ImVec2 pos;
+        if (cfg.name_pos == 0)
+            pos = {l + w / consts::BOX_WIDTH_DIVISOR - sz.x / consts::BOX_WIDTH_DIVISOR, t - sz.y - consts::TEXT_PADDING};
+        else if (cfg.name_pos == 1)
+            pos = {l + w / consts::BOX_WIDTH_DIVISOR - sz.x / consts::BOX_WIDTH_DIVISOR, b + consts::TEXT_PADDING};
+        else if (cfg.name_pos == 2)
+            pos = {l - sz.x - consts::TEXT_PADDING, t + h / consts::BOX_WIDTH_DIVISOR - sz.y / consts::BOX_WIDTH_DIVISOR};
+        else
+            pos = {r + consts::TEXT_PADDING, t + h / consts::BOX_WIDTH_DIVISOR - sz.y / consts::BOX_WIDTH_DIVISOR};
+
+        const ImU32 txt_clr = ImGui::ColorConvertFloat4ToU32(col_txt);
+        if (cfg.esp_outline)
+        {
+            dl->AddText({pos.x - consts::BOX_PADDING, pos.y}, 0xFF000000, name.c_str());
+            dl->AddText({pos.x + consts::BOX_PADDING, pos.y}, 0xFF000000, name.c_str());
+            dl->AddText({pos.x, pos.y - consts::BOX_PADDING}, 0xFF000000, name.c_str());
+            dl->AddText({pos.x, pos.y + consts::BOX_PADDING}, 0xFF000000, name.c_str());
+        }
+        dl->AddText(pos, txt_clr, name.c_str());
+    }
+}
+
 void render::setup_monochrome()
 {
     auto &s = ImGui::GetStyle();
@@ -110,151 +218,41 @@ void render::setup_monochrome()
 
 void render::draw_esp(ImDrawList *const dl, const std::vector<PlayerData> &players, const Config &cfg, int sw, int sh)
 {
-    ImVec4 col_t(cfg.color_t[0], cfg.color_t[1], cfg.color_t[2], cfg.color_t[3]);
-    ImVec4 col_ct(cfg.color_ct[0], cfg.color_ct[1], cfg.color_ct[2], cfg.color_ct[3]);
-    ImVec4 col_txt(cfg.color_txt[0], cfg.color_txt[1], cfg.color_txt[2], cfg.color_txt[3]);
+    if (!cfg.esp_enabled || players.empty())
+        return;
+
+    const ImVec4 col_t(cfg.color_t[0], cfg.color_t[1], cfg.color_t[2], cfg.color_t[3]);
+    const ImVec4 col_ct(cfg.color_ct[0], cfg.color_ct[1], cfg.color_ct[2], cfg.color_ct[3]);
+    const ImVec4 col_txt(cfg.color_txt[0], cfg.color_txt[1], cfg.color_txt[2], cfg.color_txt[3]);
 
     for (const auto &p : players)
     {
         if (!p.is_on_screen)
             continue;
 
-        float h = p.feet_screen.y - p.head_screen.y;
+        const float h = p.feet_screen.y - p.head_screen.y;
         if (h <= 0.0f)
             continue;
 
-        float w = h / consts::BOX_WIDTH_DIVISOR;
-        float l = p.head_screen.x - w / consts::BOX_WIDTH_DIVISOR;
-        float t = p.head_screen.y;
-        float r = l + w;
-        float b = p.feet_screen.y;
+        const float w = h / consts::BOX_WIDTH_DIVISOR;
+        const float l = p.head_screen.x - w / consts::BOX_WIDTH_DIVISOR;
+        const float t = p.head_screen.y;
+        const float r = l + w;
+        const float b = p.feet_screen.y;
 
-        ImU32 clr = ImGui::ColorConvertFloat4ToU32(p.team == consts::TEAM_TERRORIST ? col_t : col_ct);
+        const ImVec4 &team_col = (p.team == consts::TEAM_TERRORIST) ? col_t : col_ct;
 
         if (cfg.show_snaplines)
-        {
-            ImVec2 snap_start;
-            if (cfg.snapline_type == 0)
-                snap_start = {sw / 2.0f, static_cast<float>(sh)};
-            else if (cfg.snapline_type == 1)
-                snap_start = {sw / 2.0f, sh / 2.0f};
-            else
-                snap_start = {sw / 2.0f, 0.0f};
-
-            ImVec2 snap_end(p.feet_screen.x, p.feet_screen.y);
-            if (cfg.esp_outline)
-                dl->AddLine(snap_start, snap_end, 0xFF000000, cfg.snapline_border + consts::SNAPLINE_OUTLINE_ADD);
-            dl->AddLine(snap_start, snap_end, clr, cfg.snapline_border);
-        }
+            draw_snapline(dl, team_col, p.feet_screen, cfg, sw, sh);
 
         if (cfg.show_boxes)
-        {
-            if (cfg.box_type == 0)
-            {
-                if (cfg.esp_outline)
-                    dl->AddRect({l - consts::BOX_PADDING, t - consts::BOX_PADDING}, {r + consts::BOX_PADDING, b + consts::BOX_PADDING}, 0xFF000000);
-                dl->AddRect({l, t}, {r, b}, clr, 0, 0, cfg.box_border);
-            }
-            else
-            {
-                auto draw_c = [&](ImU32 c, float th)
-                {
-                    float lw = w / consts::CORNER_DIVISOR;
-                    float lh = h / consts::CORNER_DIVISOR;
-                    dl->AddLine({l, t}, {l + lw, t}, c, th);
-                    dl->AddLine({l, t}, {l, t + lh}, c, th);
-                    dl->AddLine({r, t}, {r - lw, t}, c, th);
-                    dl->AddLine({r, t}, {r, t + lh}, c, th);
-                    dl->AddLine({l, b}, {l + lw, b}, c, th);
-                    dl->AddLine({l, b}, {l, b - lh}, c, th);
-                    dl->AddLine({r, b}, {r - lw, b}, c, th);
-                    dl->AddLine({r, b}, {r, b - lh}, c, th);
-                };
-                if (cfg.esp_outline)
-                    draw_c(0xFF000000, cfg.box_border + consts::BOX_OUTLINE_ADD);
-                draw_c(clr, cfg.box_border);
-            }
-        }
+            draw_box(dl, team_col, l, t, r, b, w, h, cfg);
 
         if (cfg.show_health)
-        {
-            float pct = std::clamp(static_cast<float>(p.health) / consts::HEALTH_DIVISOR, consts::MIN_HEALTH_PERCENT, consts::MAX_HEALTH_PERCENT);
-            ImU32 hclr = IM_COL32(static_cast<int>((consts::MAX_HEALTH_PERCENT - pct) * consts::BYTE_MAX), static_cast<int>(pct * consts::BYTE_MAX), 0, consts::BYTE_MAX);
-
-            float bl, bt, br, bb, fl, ft, fr, fb;
-            if (cfg.hp_bar_pos == 0)
-            {
-                bl = l - consts::HP_BAR_OFFSET;
-                bt = t;
-                br = l - consts::HP_BAR_WIDTH;
-                bb = b;
-                fl = bl;
-                ft = b - (h * pct);
-                fr = br;
-                fb = b;
-            }
-            else if (cfg.hp_bar_pos == 1)
-            {
-                bl = r + consts::HP_BAR_WIDTH;
-                bt = t;
-                br = r + consts::HP_BAR_OFFSET;
-                bb = b;
-                fl = bl;
-                ft = b - (h * pct);
-                fr = br;
-                fb = b;
-            }
-            else if (cfg.hp_bar_pos == 2)
-            {
-                bl = l;
-                bt = t - consts::HP_BAR_OFFSET;
-                br = r;
-                bb = t - consts::HP_BAR_WIDTH;
-                fl = l;
-                ft = bt;
-                fr = l + (w * pct);
-                fb = bb;
-            }
-            else
-            {
-                bl = l;
-                bt = b + consts::HP_BAR_WIDTH;
-                br = r;
-                bb = b + consts::HP_BAR_OFFSET;
-                fl = l;
-                ft = bt;
-                fr = l + (w * pct);
-                fb = bb;
-            }
-
-            if (cfg.esp_outline)
-                dl->AddRectFilled({bl - consts::BOX_PADDING, bt - consts::BOX_PADDING}, {br + consts::BOX_PADDING, bb + consts::BOX_PADDING}, 0xFF000000);
-            dl->AddRectFilled({bl, bt}, {br, bb}, IM_COL32(consts::HP_BAR_BG_R, consts::HP_BAR_BG_G, consts::HP_BAR_BG_B, consts::HP_BAR_BG_A));
-            dl->AddRectFilled({fl, ft}, {fr, fb}, hclr);
-        }
+            draw_health(dl, p.health, l, t, r, b, w, h, cfg);
 
         if (cfg.show_names)
-        {
-            ImVec2 sz = ImGui::CalcTextSize(p.name.c_str());
-            ImVec2 pos;
-            if (cfg.name_pos == 0)
-                pos = {l + w / consts::BOX_WIDTH_DIVISOR - sz.x / consts::BOX_WIDTH_DIVISOR, t - sz.y - consts::TEXT_PADDING};
-            else if (cfg.name_pos == 1)
-                pos = {l + w / consts::BOX_WIDTH_DIVISOR - sz.x / consts::BOX_WIDTH_DIVISOR, b + consts::TEXT_PADDING};
-            else if (cfg.name_pos == 2)
-                pos = {l - sz.x - consts::TEXT_PADDING, t + h / consts::BOX_WIDTH_DIVISOR - sz.y / consts::BOX_WIDTH_DIVISOR};
-            else
-                pos = {r + consts::TEXT_PADDING, t + h / consts::BOX_WIDTH_DIVISOR - sz.y / consts::BOX_WIDTH_DIVISOR};
-
-            if (cfg.esp_outline)
-            {
-                dl->AddText({pos.x - consts::BOX_PADDING, pos.y}, 0xFF000000, p.name.c_str());
-                dl->AddText({pos.x + consts::BOX_PADDING, pos.y}, 0xFF000000, p.name.c_str());
-                dl->AddText({pos.x, pos.y - consts::BOX_PADDING}, 0xFF000000, p.name.c_str());
-                dl->AddText({pos.x, pos.y + consts::BOX_PADDING}, 0xFF000000, p.name.c_str());
-            }
-            dl->AddText(pos, ImGui::ColorConvertFloat4ToU32(col_txt), p.name.c_str());
-        }
+            draw_name(dl, p.name, col_txt, l, t, r, b, w, h, cfg);
     }
 }
 
@@ -268,47 +266,53 @@ void render::draw_menu(Config &cfg, bool &menu, char *cfg_input, std::string &cf
         if (ImGui::BeginTabItem("ESP"))
         {
             ImGui::Checkbox("Enable", &cfg.esp_enabled);
-            ImGui::Checkbox("Outline", &cfg.esp_outline);
-            ImGui::Spacing();
-
-            ImGui::Checkbox("Boxes", &cfg.show_boxes);
-            if (cfg.show_boxes)
+            if (cfg.esp_enabled)
             {
                 ImGui::Indent();
-                const char *bt[] = {"Frame", "Corners"};
-                ImGui::Combo("Type##Box", &cfg.box_type, bt, 2);
-                ImGui::SliderFloat("Border##Box", &cfg.box_border, consts::SLIDER_MIN, consts::SLIDER_MAX, "%.1f");
-                ImGui::Unindent();
-            }
+                ImGui::Checkbox("Teammates", &cfg.esp_teammates);
+                ImGui::Checkbox("Outline", &cfg.esp_outline);
+                ImGui::Spacing();
 
-            ImGui::Spacing();
-            ImGui::Checkbox("HP Bar", &cfg.show_health);
-            if (cfg.show_health)
-            {
-                ImGui::Indent();
-                const char *hp[] = {"Left", "Right", "Top", "Bottom"};
-                ImGui::Combo("Position##HP", &cfg.hp_bar_pos, hp, 4);
-                ImGui::Unindent();
-            }
+                ImGui::Checkbox("Boxes", &cfg.show_boxes);
+                if (cfg.show_boxes)
+                {
+                    ImGui::Indent();
+                    const char *bt[] = {"Frame", "Corners"};
+                    ImGui::Combo("Type##Box", &cfg.box_type, bt, 2);
+                    ImGui::SliderFloat("Border##Box", &cfg.box_border, consts::SLIDER_MIN, consts::SLIDER_MAX, "%.1f");
+                    ImGui::Unindent();
+                }
 
-            ImGui::Spacing();
-            ImGui::Checkbox("Nicknames", &cfg.show_names);
-            if (cfg.show_names)
-            {
-                ImGui::Indent();
-                const char *np[] = {"Top", "Bottom", "Left", "Right"};
-                ImGui::Combo("Position##Name", &cfg.name_pos, np, 4);
-                ImGui::Unindent();
-            }
+                ImGui::Spacing();
+                ImGui::Checkbox("HP Bar", &cfg.show_health);
+                if (cfg.show_health)
+                {
+                    ImGui::Indent();
+                    const char *hp[] = {"Left", "Right", "Top", "Bottom"};
+                    ImGui::Combo("Position##HP", &cfg.hp_bar_pos, hp, 4);
+                    ImGui::Unindent();
+                }
 
-            ImGui::Spacing();
-            ImGui::Checkbox("Snaplines", &cfg.show_snaplines);
-            if (cfg.show_snaplines)
-            {
-                ImGui::Indent();
-                const char *st[] = {"Bottom", "Center", "Top"};
-                ImGui::Combo("Origin##Snap", &cfg.snapline_type, st, 3);
-                ImGui::SliderFloat("Border##Snap", &cfg.snapline_border, consts::SLIDER_MIN, consts::SLIDER_MAX, "%.1f");
+                ImGui::Spacing();
+                ImGui::Checkbox("Nicknames", &cfg.show_names);
+                if (cfg.show_names)
+                {
+                    ImGui::Indent();
+                    const char *np[] = {"Top", "Bottom", "Left", "Right"};
+                    ImGui::Combo("Position##Name", &cfg.name_pos, np, 4);
+                    ImGui::Unindent();
+                }
+
+                ImGui::Spacing();
+                ImGui::Checkbox("Snaplines", &cfg.show_snaplines);
+                if (cfg.show_snaplines)
+                {
+                    ImGui::Indent();
+                    const char *st[] = {"Bottom", "Center", "Top"};
+                    ImGui::Combo("Origin##Snap", &cfg.snapline_type, st, 3);
+                    ImGui::SliderFloat("Border##Snap", &cfg.snapline_border, consts::SLIDER_MIN, consts::SLIDER_MAX, "%.1f");
+                    ImGui::Unindent();
+                }
                 ImGui::Unindent();
             }
             ImGui::EndTabItem();

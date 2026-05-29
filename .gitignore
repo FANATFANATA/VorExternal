@@ -1,2 +1,5 @@
 /.vscode
 /build
+/menu.py
+/builder.py
+/full_project_hpp.txt

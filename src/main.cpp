@@ -50,14 +50,25 @@ int main()
         }
 
         int r_idx = s.read_index.load();
-        std::vector<PlayerData> render_players = s.players_buffer[r_idx];
-        ViewMatrix vm = s.vm_buffer[r_idx];
+        const auto &src_players = s.players_buffer[r_idx];
+        const ViewMatrix vm = s.vm_buffer[r_idx];
+        const std::uint8_t local_team = s.local_team_buffer[r_idx];
 
-        for (auto &p : render_players)
+        std::vector<PlayerData> render_players;
+        render_players.reserve(src_players.size());
+
+        for (const auto &p : src_players)
         {
-            bool feet_w2s = math::w2s(p.position, p.feet_screen, vm, sw, sh);
-            bool head_w2s = math::w2s({p.position.x, p.position.y, p.position.z + 72.0f}, p.head_screen, vm, sw, sh);
-            p.is_on_screen = feet_w2s && head_w2s;
+            if (!cfg.esp_teammates && p.team == local_team)
+                continue;
+
+            PlayerData rp = p;
+            bool feet_w2s = math::w2s(rp.position, rp.feet_screen, vm, sw, sh);
+            bool head_w2s = math::w2s({rp.position.x, rp.position.y, rp.position.z + 72.0f}, rp.head_screen, vm, sw, sh);
+            rp.is_on_screen = feet_w2s && head_w2s;
+
+            if (rp.is_on_screen)
+                render_players.push_back(std::move(rp));
         }
 
         ov.begin_frame();
