@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <d3d11.h>
 #include <wrl/client.h>
+#include "../types.h"
 
 enum class OverlayStatus
 {
@@ -16,6 +17,7 @@ class Overlay
 public:
     Overlay() noexcept = default;
     ~Overlay() noexcept;
+
     Overlay(const Overlay &) = delete;
     Overlay &operator=(const Overlay &) = delete;
     Overlay(Overlay &&) noexcept = default;
@@ -23,11 +25,9 @@ public:
 
     [[nodiscard]] OverlayStatus initialize() noexcept;
     [[nodiscard]] bool handle_messages() noexcept;
-
     void begin_frame() noexcept;
     void end_frame() noexcept;
-
-    void toggle_click_through(bool click_through) noexcept;
+    void toggle_click_through(ClickThroughMode mode) noexcept;
 
 private:
     HWND window_handle_{nullptr};

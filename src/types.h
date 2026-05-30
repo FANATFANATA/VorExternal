@@ -55,6 +55,12 @@ struct Config
 };
 #pragma pack(pop)
 
+enum class ClickThroughMode
+{
+    Interactive,
+    Transparent
+};
+
 struct SharedState
 {
     std::array<std::vector<PlayerData>, 2> players_buffer;

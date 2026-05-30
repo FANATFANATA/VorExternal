@@ -22,7 +22,10 @@ namespace config_manager
     {
         std::error_code ec;
         std::filesystem::path dir = get_dir();
-        static_cast<void>(std::filesystem::create_directories(dir, ec));
+        std::filesystem::create_directories(dir, ec);
+        if (ec)
+            return;
+
         std::ofstream f(dir / (name + ".cfg"), std::ios::binary);
         if (f.is_open())
         {
@@ -47,7 +50,7 @@ namespace config_manager
     void remove(const std::string &name)
     {
         std::error_code ec;
-        static_cast<void>(std::filesystem::remove(get_dir() / (name + ".cfg"), ec));
+        std::filesystem::remove(get_dir() / (name + ".cfg"), ec);
     }
 
     std::vector<std::string> list()
@@ -55,10 +58,13 @@ namespace config_manager
         std::vector<std::string> res;
         std::error_code ec;
         std::filesystem::path dir = get_dir();
-        if (!std::filesystem::exists(dir, ec))
+        if (!std::filesystem::exists(dir, ec) || ec)
             return res;
+
         for (const auto &e : std::filesystem::directory_iterator(dir, ec))
         {
+            if (ec)
+                break;
             if (e.path().extension() == ".cfg")
             {
                 res.push_back(e.path().stem().string());
