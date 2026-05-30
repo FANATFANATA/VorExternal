@@ -61,11 +61,13 @@ int main()
         std::vector<PlayerData> src_players;
         ViewMatrix vm;
         std::uint8_t local_team = 0;
+        PlantedC4Data c4_data;
 
         int r_idx = s.read_index.load(std::memory_order_acquire);
         src_players = s.players_buffer[r_idx];
         vm = s.vm_buffer[r_idx];
         local_team = s.local_team_buffer[r_idx];
+        c4_data = s.c4_buffer[r_idx];
 
         std::vector<PlayerData> render_players;
         render_players.reserve(src_players.size());
@@ -80,8 +82,12 @@ int main()
             bool head_w2s = math::w2s({rp.position.x, rp.position.y, rp.position.z + consts::HEAD_HEIGHT_OFFSET}, rp.head_screen, vm, sw, sh);
             rp.is_on_screen = feet_w2s && head_w2s;
 
-            if (rp.is_on_screen)
-                render_players.push_back(std::move(rp));
+            render_players.push_back(std::move(rp));
+        }
+
+        if (c4_data.is_planted)
+        {
+            c4_data.is_on_screen = math::w2s(c4_data.position, c4_data.screen_pos, vm, sw, sh);
         }
 
         ov.begin_frame();
@@ -94,7 +100,12 @@ int main()
 
         if (cfg.esp_enabled)
         {
-            render::draw_esp(ImGui::GetBackgroundDrawList(), render_players, cfg, sw, sh);
+            render::draw_esp(ImGui::GetBackgroundDrawList(), render_players, cfg, vm, sw, sh);
+        }
+
+        if (cfg.esp_c4 && c4_data.is_planted)
+        {
+            render::draw_c4(ImGui::GetBackgroundDrawList(), c4_data, cfg, sw, sh);
         }
 
         ov.end_frame();

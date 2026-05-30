@@ -46,7 +46,7 @@ namespace consts
     constexpr float UI_SIDEBAR_WIDTH = 120.0f;
     constexpr float UI_CONTENT_WIDTH = 360.0f;
     constexpr float UI_WINDOW_W = 500.0f;
-    constexpr float UI_WINDOW_H = 480.0f;
+    constexpr float UI_WINDOW_H = 580.0f;
     constexpr float UI_FONT_SIZE = 16.0f;
     constexpr ImU32 UI_COL_BG = IM_COL32(20, 20, 20, 255);
     constexpr ImU32 UI_COL_CHILD = IM_COL32(25, 25, 25, 255);
@@ -75,6 +75,10 @@ namespace consts
     constexpr float ANIM_THRESHOLD = 0.001f;
     constexpr float PULSE_MIN = 0.85f;
     constexpr float PULSE_MAX = 1.0f;
+    constexpr float VIEW_DIR_LENGTH = 40.0f;
+    constexpr float OFFSCREEN_ARROW_MARGIN = 30.0f;
+    constexpr float OFFSCREEN_ARROW_SIZE = 15.0f;
+    constexpr float HEAD_CIRCLE_RADIUS = 5.0f;
 }
 
 namespace tr
@@ -104,6 +108,17 @@ namespace tr
     inline const char *del(int lang) { return lang == 1 ? "Удалить" : "Delete"; }
     inline const char *saved_configs(int lang) { return lang == 1 ? "Сохраненные конфиги:" : "Saved Configs:"; }
     inline const char *language(int lang) { return lang == 1 ? "Язык" : "Language"; }
+    inline const char *armor(int lang) { return lang == 1 ? "Броня" : "Armor"; }
+    inline const char *money(int lang) { return lang == 1 ? "Деньги" : "Money"; }
+    inline const char *distance(int lang) { return lang == 1 ? "Дистанция" : "Distance"; }
+    inline const char *defuse_kit(int lang) { return lang == 1 ? "Дефьюз кит" : "Defuse Kit"; }
+    inline const char *scoped(int lang) { return lang == 1 ? "Прицел" : "Scoped"; }
+    inline const char *flash(int lang) { return lang == 1 ? "Флеш" : "Flash"; }
+    inline const char *view_dir(int lang) { return lang == 1 ? "Направление" : "View Dir"; }
+    inline const char *offscreen(int lang) { return lang == 1 ? "Стрелки" : "Offscreen"; }
+    inline const char *c4_esp(int lang) { return lang == 1 ? "C4 Бомба" : "C4 Bomb"; }
+    inline const char *advanced(int lang) { return lang == 1 ? "Продвинутое" : "Advanced"; }
+    inline const char *planted(int lang) { return lang == 1 ? "БОМБА ЗАЛОЖЕНА" : "BOMB PLANTED"; }
 }
 
 namespace
@@ -158,6 +173,18 @@ namespace
         if (v.w > 1.0f)
             v.w = 1.0f;
         return ImGui::ColorConvertFloat4ToU32(v);
+    }
+
+    inline bool w2s_unclamped(const Vector3 &world, Vector3 &screen, const ViewMatrix &vm, int w, int h)
+    {
+        float clip_w = vm.matrix[3][0] * world.x + vm.matrix[3][1] * world.y + vm.matrix[3][2] * world.z + vm.matrix[3][3];
+        if (std::abs(clip_w) < 0.001f)
+            return false;
+        float x = vm.matrix[0][0] * world.x + vm.matrix[0][1] * world.y + vm.matrix[0][2] * world.z + vm.matrix[0][3];
+        float y = vm.matrix[1][0] * world.x + vm.matrix[1][1] * world.y + vm.matrix[1][2] * world.z + vm.matrix[1][3];
+        screen.x = (static_cast<float>(w) / 2.0f) + (x / clip_w * (static_cast<float>(w) / 2.0f));
+        screen.y = (static_cast<float>(h) / 2.0f) - (y / clip_w * (static_cast<float>(h) / 2.0f));
+        return true;
     }
 
     namespace anim
@@ -579,29 +606,78 @@ namespace
         dl->AddRectFilled(ImVec2(fl, ft), ImVec2(fr, fb), hclr);
     }
 
-    void draw_name(ImDrawList *const dl, const std::string &name, const ImVec4 &col_txt, float l, float t, float r, float b, float w, float h, const Config &cfg)
+    void draw_text_with_outline(ImDrawList *const dl, ImVec2 pos, ImU32 col, const char *text, float outline_thick = 1.0f)
     {
-        const ImVec2 sz = ImGui::CalcTextSize(name.c_str());
-        ImVec2 pos;
-        if (cfg.name_pos == 0)
-            pos = ImVec2(l + w / consts::BOX_WIDTH_DIVISOR - sz.x / consts::BOX_WIDTH_DIVISOR, t - sz.y - consts::TEXT_PADDING);
-        else if (cfg.name_pos == 1)
-            pos = ImVec2(l + w / consts::BOX_WIDTH_DIVISOR - sz.x / consts::BOX_WIDTH_DIVISOR, b + consts::TEXT_PADDING);
-        else if (cfg.name_pos == 2)
-            pos = ImVec2(l - sz.x - consts::TEXT_PADDING, t + h / consts::BOX_WIDTH_DIVISOR - sz.y / consts::BOX_WIDTH_DIVISOR);
-        else
-            pos = ImVec2(r + consts::TEXT_PADDING, t + h / consts::BOX_WIDTH_DIVISOR - sz.y / consts::BOX_WIDTH_DIVISOR);
-
-        const ImU32 txt_clr = ImGui::ColorConvertFloat4ToU32(col_txt);
-
-        if (cfg.esp_outline)
+        if (outline_thick > 0.0f)
         {
-            dl->AddText(ImVec2(pos.x - consts::BOX_PADDING, pos.y), consts::COL_BLACK, name.c_str());
-            dl->AddText(ImVec2(pos.x + consts::BOX_PADDING, pos.y), consts::COL_BLACK, name.c_str());
-            dl->AddText(ImVec2(pos.x, pos.y - consts::BOX_PADDING), consts::COL_BLACK, name.c_str());
-            dl->AddText(ImVec2(pos.x, pos.y + consts::BOX_PADDING), consts::COL_BLACK, name.c_str());
+            dl->AddText(ImVec2(pos.x - outline_thick, pos.y), consts::COL_BLACK, text);
+            dl->AddText(ImVec2(pos.x + outline_thick, pos.y), consts::COL_BLACK, text);
+            dl->AddText(ImVec2(pos.x, pos.y - outline_thick), consts::COL_BLACK, text);
+            dl->AddText(ImVec2(pos.x, pos.y + outline_thick), consts::COL_BLACK, text);
         }
-        dl->AddText(pos, txt_clr, name.c_str());
+        dl->AddText(pos, col, text);
+    }
+
+    void draw_offscreen_arrow(ImDrawList *const dl, const Vector3 &screen_pos, const ImVec4 &col, int sw, int sh)
+    {
+        ImVec2 center(static_cast<float>(sw) / 2.0f, static_cast<float>(sh) / 2.0f);
+        ImVec2 target(screen_pos.x, screen_pos.y);
+
+        float dx = target.x - center.x;
+        float dy = target.y - center.y;
+        float angle = std::atan2(dy, dx);
+
+        float margin = consts::OFFSCREEN_ARROW_MARGIN;
+        float max_w = static_cast<float>(sw) - margin * 2.0f;
+        float max_h = static_cast<float>(sh) - margin * 2.0f;
+
+        float intersect_x = center.x;
+        float intersect_y = center.y;
+
+        float cos_a = std::cos(angle);
+        float sin_a = std::sin(angle);
+
+        if (std::abs(cos_a) * max_h > std::abs(sin_a) * max_w)
+        {
+            float sign = cos_a > 0 ? 1.0f : -1.0f;
+            intersect_x = center.x + sign * max_w / 2.0f;
+            intersect_y = center.y + (sin_a / cos_a) * sign * max_w / 2.0f;
+        }
+        else
+        {
+            float sign = sin_a > 0 ? 1.0f : -1.0f;
+            intersect_y = center.y + sign * max_h / 2.0f;
+            intersect_x = center.x + (cos_a / sin_a) * sign * max_h / 2.0f;
+        }
+
+        ImVec2 arrow_pos(intersect_x, intersect_y);
+        float arrow_size = consts::OFFSCREEN_ARROW_SIZE;
+
+        ImVec2 p1(arrow_pos.x + std::cos(angle) * arrow_size, arrow_pos.y + std::sin(angle) * arrow_size);
+        ImVec2 p2(arrow_pos.x + std::cos(angle + 2.5f) * arrow_size, arrow_pos.y + std::sin(angle + 2.5f) * arrow_size);
+        ImVec2 p3(arrow_pos.x + std::cos(angle - 2.5f) * arrow_size, arrow_pos.y + std::sin(angle - 2.5f) * arrow_size);
+
+        ImU32 clr = ImGui::ColorConvertFloat4ToU32(col);
+        dl->AddTriangleFilled(p1, p2, p3, clr);
+        dl->AddTriangle(p1, p2, p3, consts::COL_BLACK, 2.0f);
+    }
+
+    void draw_head_circle(ImDrawList *const dl, const Vector3 &head, const ImVec4 &col)
+    {
+        const ImU32 clr = ImGui::ColorConvertFloat4ToU32(col);
+        dl->AddCircle(ImVec2(head.x, head.y), consts::HEAD_CIRCLE_RADIUS, clr, 0, 1.0f);
+    }
+
+    void draw_view_dir(ImDrawList *const dl, const Vector3 &head, const QAngle &angles, const ImVec4 &col)
+    {
+        const ImU32 clr = ImGui::ColorConvertFloat4ToU32(col);
+        float yaw = angles.y * 3.14159265f / 180.0f;
+        float pitch = angles.x * 3.14159265f / 180.0f;
+
+        float length = consts::VIEW_DIR_LENGTH * std::cos(pitch);
+        ImVec2 end(head.x + std::sin(yaw) * length, head.y - std::cos(yaw) * length);
+
+        dl->AddLine(ImVec2(head.x, head.y), end, clr, 1.5f);
     }
 }
 
@@ -647,7 +723,7 @@ void render::setup_monochrome()
     c[ImGuiCol_Separator] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
 }
 
-void render::draw_esp(ImDrawList *const dl, const std::vector<PlayerData> &players, const Config &cfg, int sw, int sh)
+void render::draw_esp(ImDrawList *const dl, const std::vector<PlayerData> &players, const Config &cfg, const ViewMatrix &vm, int sw, int sh)
 {
     if (!cfg.esp_enabled || players.empty())
         return;
@@ -658,8 +734,18 @@ void render::draw_esp(ImDrawList *const dl, const std::vector<PlayerData> &playe
 
     for (const auto &p : players)
     {
+        const ImVec4 &team_col = (p.team == consts::TEAM_TERRORIST) ? col_t : col_ct;
+
         if (!p.is_on_screen)
+        {
+            if (cfg.show_offscreen_arrows)
+            {
+                Vector3 offscreen_pos{};
+                if (w2s_unclamped(p.position, offscreen_pos, vm, sw, sh))
+                    draw_offscreen_arrow(dl, offscreen_pos, team_col, sw, sh);
+            }
             continue;
+        }
 
         const float h = p.feet_screen.y - p.head_screen.y;
         if (h <= 0.0f)
@@ -671,16 +757,62 @@ void render::draw_esp(ImDrawList *const dl, const std::vector<PlayerData> &playe
         const float r = l + w;
         const float b = p.feet_screen.y;
 
-        const ImVec4 &team_col = (p.team == consts::TEAM_TERRORIST) ? col_t : col_ct;
-
         if (cfg.show_snaplines)
             draw_snapline(dl, team_col, p.feet_screen, cfg, sw, sh);
         if (cfg.show_boxes)
             draw_box(dl, team_col, l, t, r, b, w, h, cfg);
         if (cfg.show_health)
             draw_health(dl, p.health, l, t, r, b, w, h, cfg);
+
+        draw_head_circle(dl, p.head_screen, team_col);
+
+        if (cfg.show_view_dir)
+            draw_view_dir(dl, p.head_screen, p.eye_angles, team_col);
+
+        std::string info_text;
         if (cfg.show_names)
-            draw_name(dl, p.name, col_txt, l, t, r, b, w, h, cfg);
+            info_text += p.name + "\n";
+        if (cfg.show_distance)
+            info_text += std::to_string(static_cast<int>(p.distance)) + "m\n";
+        if (cfg.show_armor && p.armor > 0)
+            info_text += "Armor: " + std::to_string(p.armor) + "\n";
+        if (cfg.show_money)
+            info_text += "$" + std::to_string(p.money) + "\n";
+        if (cfg.show_defuse_kit && p.has_defuser)
+            info_text += "Defuser\n";
+        if (cfg.show_scoped && p.is_scoped)
+            info_text += "Scoped\n";
+        if (cfg.show_flash && p.flash_duration > 0.0f)
+            info_text += "Flashed\n";
+
+        if (!info_text.empty())
+        {
+            info_text.pop_back();
+            ImVec2 text_pos(r + consts::TEXT_PADDING, t);
+            draw_text_with_outline(dl, text_pos, ImGui::ColorConvertFloat4ToU32(col_txt), info_text.c_str());
+        }
+    }
+}
+
+void render::draw_c4(ImDrawList *const dl, const PlantedC4Data &c4, const Config &cfg, int sw, int sh)
+{
+    if (!c4.is_planted)
+        return;
+
+    const ImVec4 c4_col(cfg.c4_color[0], cfg.c4_color[1], cfg.c4_color[2], cfg.c4_color[3]);
+    const ImU32 clr = ImGui::ColorConvertFloat4ToU32(c4_col);
+
+    if (c4.is_on_screen)
+    {
+        dl->AddCircleFilled(ImVec2(c4.screen_pos.x, c4.screen_pos.y), 10.0f, clr);
+        dl->AddCircle(ImVec2(c4.screen_pos.x, c4.screen_pos.y), 12.0f, consts::COL_BLACK, 0, 2.0f);
+
+        std::string c4_text = tr::planted(cfg.language);
+        c4_text += "\n" + std::to_string(static_cast<int>(c4.distance)) + "m";
+        if (c4.being_defused)
+            c4_text += "\nDefusing...";
+
+        draw_text_with_outline(dl, ImVec2(c4.screen_pos.x + 15.0f, c4.screen_pos.y - 10.0f), clr, c4_text.c_str());
     }
 }
 
@@ -747,10 +879,12 @@ void render::draw_menu(Config &cfg, bool &menu, char *cfg_input, std::string &cf
         ImGui::BeginChild("##SidebarChild", ImVec2(0, 0), true);
         if (ui::tab(tr::visuals(cfg.language), active_tab == 0))
             active_tab = 0;
-        if (ui::tab(tr::options(cfg.language), active_tab == 1))
+        if (ui::tab(tr::advanced(cfg.language), active_tab == 1))
             active_tab = 1;
-        if (ui::tab(tr::configs(cfg.language), active_tab == 2))
+        if (ui::tab(tr::options(cfg.language), active_tab == 2))
             active_tab = 2;
+        if (ui::tab(tr::configs(cfg.language), active_tab == 3))
+            active_tab = 3;
         ImGui::EndChild();
 
         ImGui::TableNextColumn();
@@ -807,13 +941,33 @@ void render::draw_menu(Config &cfg, bool &menu, char *cfg_input, std::string &cf
         }
         else if (active_tab == 1)
         {
+            ui::checkbox(tr::armor(cfg.language), &cfg.show_armor);
+            ui::checkbox(tr::money(cfg.language), &cfg.show_money);
+            ui::checkbox(tr::distance(cfg.language), &cfg.show_distance);
+            ui::checkbox(tr::defuse_kit(cfg.language), &cfg.show_defuse_kit);
+            ui::checkbox(tr::scoped(cfg.language), &cfg.show_scoped);
+            ui::checkbox(tr::flash(cfg.language), &cfg.show_flash);
+            ui::checkbox(tr::view_dir(cfg.language), &cfg.show_view_dir);
+            ui::checkbox(tr::offscreen(cfg.language), &cfg.show_offscreen_arrows);
+
+            ImGui::Separator();
+            ui::checkbox(tr::c4_esp(cfg.language), &cfg.esp_c4);
+            if (cfg.esp_c4)
+            {
+                ImGui::Indent();
+                ui::color_edit(tr::c4_esp(cfg.language), cfg.c4_color);
+                ImGui::Unindent();
+            }
+        }
+        else if (active_tab == 2)
+        {
             const char *langs[] = {"English", "Русский"};
             ui::combo("##Lang", &cfg.language, langs, 2);
             ui::color_edit(tr::t_team(cfg.language), cfg.color_t);
             ui::color_edit(tr::ct_team(cfg.language), cfg.color_ct);
             ui::color_edit(tr::text(cfg.language), cfg.color_txt);
         }
-        else if (active_tab == 2)
+        else if (active_tab == 3)
         {
             ui::input_text("##CfgName", cfg_input, consts::MAX_CONFIG_NAME_LENGTH);
             cfg_name = cfg_input;

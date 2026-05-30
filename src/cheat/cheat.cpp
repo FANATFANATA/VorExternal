@@ -2,6 +2,7 @@
 #include "../offsets/offsets.h"
 #include <thread>
 #include <chrono>
+#include <cmath>
 
 namespace consts
 {
@@ -16,6 +17,9 @@ namespace consts
     constexpr int ENTITY_LIST_PAGE_OFFSET = 16;
     constexpr int READ_RETRY_DELAY_MS = 10;
     constexpr int FRAME_DELAY_MS = 1;
+    constexpr std::uint32_t FL_ONGROUND = 0x1;
+    constexpr std::uint32_t FL_DUCKING = 0x2;
+    constexpr float DISTANCE_SCALE = 0.0254f;
 }
 
 std::uintptr_t get_ent(const Memory &m, std::uintptr_t base, int i)
@@ -23,11 +27,9 @@ std::uintptr_t get_ent(const Memory &m, std::uintptr_t base, int i)
     auto list_opt = m.read<std::uintptr_t>(base + game::offsets::dwEntityList);
     if (!list_opt)
         return 0;
-
     auto entry_opt = m.read<std::uintptr_t>(*list_opt + (consts::ENTITY_LIST_POINTER_SIZE * (i >> consts::ENTITY_LIST_PAGE_SHIFT)) + consts::ENTITY_LIST_PAGE_OFFSET);
     if (!entry_opt)
         return 0;
-
     auto ent_opt = m.read<std::uintptr_t>(*entry_opt + consts::ENTITY_LIST_STRIDE * (i & consts::ENTITY_LIST_PAGE_MASK));
     return ent_opt.value_or(0);
 }
@@ -36,7 +38,6 @@ std::uintptr_t get_pawn(const Memory &m, std::uintptr_t base, std::uint32_t hand
 {
     if (handle == 0 || handle == consts::INVALID_HANDLE)
         return 0;
-
     return get_ent(m, base, static_cast<int>(handle & consts::HANDLE_MASK));
 }
 
@@ -59,12 +60,34 @@ void cheat::worker(const Memory &m, std::uintptr_t c_base, SharedState &s)
         std::uintptr_t lp = *lp_opt;
         ViewMatrix vm = *vm_opt;
         std::uint8_t local_team = 0;
+        Vector3 local_pos{};
 
         if (lp)
         {
             auto lt_opt = m.read<std::uint8_t>(lp + game::fields::m_iTeamNum);
             if (lt_opt)
                 local_team = *lt_opt;
+            auto lp_pos_opt = m.read<Vector3>(lp + game::fields::m_vOldOrigin);
+            if (lp_pos_opt)
+                local_pos = *lp_pos_opt;
+        }
+
+        PlantedC4Data c4_data{};
+        auto c4_opt = m.read<std::uintptr_t>(c_base + game::offsets::dwPlantedC4);
+        if (c4_opt && *c4_opt)
+        {
+            auto tick_opt = m.read<bool>(*c4_opt + game::fields::m_bBombTicking);
+            if (tick_opt && *tick_opt)
+            {
+                c4_data.is_planted = true;
+                auto pos_opt = m.read<Vector3>(*c4_opt + game::fields::m_vOldOrigin);
+                if (pos_opt)
+                {
+                    c4_data.position = *pos_opt;
+                    c4_data.distance = std::sqrt(std::pow(c4_data.position.x - local_pos.x, 2) + std::pow(c4_data.position.y - local_pos.y, 2) + std::pow(c4_data.position.z - local_pos.z, 2)) * consts::DISTANCE_SCALE;
+                }
+                c4_data.being_defused = m.read<bool>(*c4_opt + game::fields::m_bBeingDefused).value_or(false);
+            }
         }
 
         tmp.clear();
@@ -98,12 +121,32 @@ void cheat::worker(const Memory &m, std::uintptr_t c_base, SharedState &s)
             d.team = *team_opt;
             d.position = *pos_opt;
             d.is_alive = true;
+            d.distance = std::sqrt(std::pow(d.position.x - local_pos.x, 2) + std::pow(d.position.y - local_pos.y, 2) + std::pow(d.position.z - local_pos.z, 2)) * consts::DISTANCE_SCALE;
+
+            d.armor = m.read<int>(p + game::fields::m_ArmorValue).value_or(0);
+            d.is_scoped = m.read<bool>(p + game::fields::m_bIsScoped).value_or(false);
+            d.flash_duration = m.read<float>(p + game::fields::m_flFlashDuration).value_or(0.0f);
+            d.velocity = m.read<Vector3>(p + game::fields::m_vecAbsVelocity).value_or(Vector3{});
+            d.eye_angles = m.read<QAngle>(p + game::fields::m_angEyeAngles).value_or(QAngle{});
+
+            auto flags_opt = m.read<std::uint32_t>(p + game::fields::m_fFlags);
+            if (flags_opt)
+            {
+                d.is_crouching = (*flags_opt & consts::FL_DUCKING) != 0;
+                d.is_in_air = (*flags_opt & consts::FL_ONGROUND) == 0;
+            }
+
+            auto item_srv_opt = m.read<std::uintptr_t>(p + game::fields::m_pItemServices);
+            if (item_srv_opt && *item_srv_opt)
+                d.has_defuser = m.read<bool>(*item_srv_opt + game::fields::m_bHasDefuser).value_or(false);
+
+            auto money_srv_opt = m.read<std::uintptr_t>(ctrl + game::fields::m_pInGameMoneyServices);
+            if (money_srv_opt && *money_srv_opt)
+                d.money = m.read<int>(*money_srv_opt + game::fields::m_iAccount).value_or(0);
 
             char buf[consts::MAX_NAME_LENGTH]{};
             if (m.read_string(ctrl + game::fields::m_iszPlayerName, buf, consts::MAX_NAME_LENGTH))
-            {
                 d.name = buf;
-            }
 
             tmp.push_back(std::move(d));
         }
@@ -114,6 +157,8 @@ void cheat::worker(const Memory &m, std::uintptr_t c_base, SharedState &s)
             s.players_buffer[w_idx] = std::move(tmp);
             s.vm_buffer[w_idx] = vm;
             s.local_team_buffer[w_idx] = local_team;
+            s.local_pos_buffer[w_idx] = local_pos;
+            s.c4_buffer[w_idx] = c4_data;
             s.read_index.store(w_idx, std::memory_order_release);
             s.write_index.store(w_idx == 0 ? 1 : 0);
         }
